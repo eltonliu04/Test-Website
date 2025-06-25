@@ -9,59 +9,42 @@
         // Check URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const isOptOutRequested = urlParams.get('gaoptout') === 'true';
-        const isStaffRequested = urlParams.get('staff') === 'true';
         
-        // Set cookies based on URL parameters
-        if (isOptOutRequested) {
-            document.cookie = 'ga-disable-G-R6DFXZXCJV=true; expires=' + 
-                new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString() + '; path=/';
-        }
+        // Check if staff cookie already exists
+        const hasStaffCookie = document.cookie.includes('test-staff=true');
         
-        if (isStaffRequested) {
+        // Only set staff cookie if URL parameter is present AND cookie doesn't exist
+        if (isOptOutRequested && !hasStaffCookie) {
             document.cookie = 'test-staff=true; expires=' + 
                 new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString() + '; path=/';
+            console.log('✅ Staff cookie set via URL parameter');
+        } else if (isOptOutRequested && hasStaffCookie) {
+            console.log('ℹ️ Staff cookie already exists, not setting duplicate');
         }
         
-        // Check opt-out status
-        function getCookie(name) {
-            const nameEQ = name + '=';
-            const ca = document.cookie.split(';');
-            for (let i = 0; i < ca.length; i++) {
-                let c = ca[i];
-                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-            }
-            return null;
-        }
+        // Always load GA4
+        var script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=G-R6DFXZXCJV';
+        document.head.appendChild(script);
         
-        const hasOptedOut = getCookie('ga-disable-G-R6DFXZXCJV') === 'true';
-        
-        // Only load GA4 if not opted out
-        if (!hasOptedOut) {
-            // Google Analytics
-            var script = document.createElement('script');
-            script.async = true;
-            script.src = 'https://www.googletagmanager.com/gtag/js?id=G-R6DFXZXCJV';
-            document.head.appendChild(script);
+        script.onload = function() {
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-R6DFXZXCJV');
             
-            script.onload = function() {
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', 'G-R6DFXZXCJV');
-                
-                // Staff detection
-                const hasStaffCookie = document.cookie.includes('test-staff=true');
-                const userType = hasStaffCookie ? 'staff' : 'public';
-                
-                gtag('event', 'page_view', {
-                  'user_type': userType
-                });
-                
-                console.log('User Type:', userType);
-                console.log('Has Staff Cookie:', hasStaffCookie);
-            };
-        }
+            // Staff detection (re-check after potential cookie setting)
+            const currentHasStaffCookie = document.cookie.includes('test-staff=true');
+            const userType = currentHasStaffCookie ? 'staff' : 'public';
+            
+            gtag('event', 'page_view', {
+              'user_type': userType
+            });
+            
+            console.log('User Type:', userType);
+            console.log('Has Staff Cookie:', currentHasStaffCookie);
+        };
     </script>
     
     <style>
@@ -74,8 +57,16 @@
     
     <div class="debug-info">
         <strong>Debug Info:</strong><br>
-        Opt-Out URL Parameter: <span id="optOutParam"></span><br>
+        Staff URL Parameter: <span id="optOutParam"></span><br>
+        Analytics Tracking: <span id="trackingStatus"></span><br>
+        User Type: <span id="userTypeDisplay"></span><br>
+        Has Staff Cookie: <span id="cookieStatus"></span><br>
+    </div>
+    
+    <div class="debug-info">
+        <strong>Debug Info:</strong><br>
         Staff URL Parameter: <span id="staffParam"></span><br>
+        Cookie Action: <span id="cookieAction"></span><br>
         Analytics Tracking: <span id="trackingStatus"></span><br>
         User Type: <span id="userTypeDisplay"></span><br>
         Has Staff Cookie: <span id="cookieStatus"></span><br>
@@ -83,15 +74,37 @@
     
     <script>
         // Display debug info
-        document.getElementById('optOutParam').textContent = isOptOutRequested ? 'YES' : 'NO';
-        document.getElementById('staffParam').textContent = isStaffRequested ? 'YES' : 'NO';
-        document.getElementById('trackingStatus').textContent = hasOptedOut ? 'DISABLED' : 'ENABLED';
+        const finalHasStaffCookie = document.cookie.includes('test-staff=true');
+        const userType = finalHasStaffCookie ? 'staff' : 'public';
         
-        const hasStaffCookie = document.cookie.includes('test-staff=true');
-        const userType = hasOptedOut ? 'N/A (opted out)' : (hasStaffCookie ? 'staff' : 'public');
-        
+        document.getElementById('staffParam').textContent = isOptOutRequested ? 'YES' : 'NO';
+        document.getElementById('trackingStatus').textContent = 'ENABLED';
         document.getElementById('userTypeDisplay').textContent = userType;
-        document.getElementById('cookieStatus').textContent = hasStaffCookie;
-    </script>
-</body>
-</html>
+        document.getElementById('cookieStatus').textContent = finalHasStaffCookie;
+        
+        // Show what action was taken
+        let cookieAction;
+        if (isOptOutRequested && !hasStaffCookie) {
+            cookieAction = 'COOKIE SET';
+        } else if (isOptOutRequested && hasStaffCookie) {
+            cookieAction = 'ALREADY EXISTS';
+        } else {
+            cookieAction = 'NO ACTION';
+        }
+        document.getElementById('cookieAction').textContent = cookieAction;
+    
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .debug-info { margin-top: 40px; padding: 20px; background: #f5f5f5; border-radius: 5px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>Analytics Test Site</h1>
+    
+    <div class="debug-info">
+        <strong>Debug Info:</strong><br>
+        Staff URL Parameter: <span id="staffParam"></span><br>
+        Cookie Action: <span id="cookieAction"></span><br>
+        User Type: <span id="userTypeDisplay"></span><br>
+        Has Staff Cookie: <span id="cookieStatus"></span><br>
+    </div>
